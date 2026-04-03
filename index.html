@@ -94,7 +94,7 @@
   .semester-badge { font-size: 11px; color: rgba(255,255,255,0.5); margin-bottom: 4px; }
   .semester-name { font-size: 12px; color: var(--warm-light); font-weight: 500; }
 
-  #main { margin-left: 220px; flex: 1; display: flex; flex-direction: column; }
+  #main { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-width: 0; }
   #topbar {
     background: var(--white); border-bottom: 1px solid var(--border);
     padding: 0 28px; height: 60px; display: flex; align-items: center; justify-content: space-between;
@@ -103,6 +103,94 @@
   .topbar-title { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 600; color: var(--forest-dark); }
   .date-display { background: var(--parchment); padding: 6px 14px; border-radius: 20px; font-weight: 500; color: var(--forest); font-size: 13px; }
   #content { padding: 28px; flex: 1; }
+
+  /* ── BOTTOM NAV (mobile only) ── */
+  #bottom-nav { display: none; }
+
+  /* ── MOBILE RESPONSIVE ── */
+  @media (max-width: 768px) {
+    #sidebar { display: none; }
+    #main { margin-left: 0; padding-bottom: 70px; }
+    #topbar { padding: 0 16px; height: 52px; }
+    .topbar-title { font-size: 18px; }
+    .date-display { font-size: 11px; padding: 4px 10px; }
+    #topbar .btn-outline { display: none; }
+    #content { padding: 12px; }
+
+    #bottom-nav {
+      display: flex;
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--forest-dark);
+      border-top: 1px solid rgba(255,255,255,0.12);
+      z-index: 100; height: 62px;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .bottom-nav-item {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 2px; cursor: pointer; color: rgba(255,255,255,0.45); transition: color 0.2s;
+      font-size: 10px; font-weight: 500; border-top: 2px solid transparent;
+    }
+    .bottom-nav-item.active { color: var(--sage-light); border-top-color: var(--sage-light); }
+    .bottom-nav-item .bnav-icon { font-size: 20px; }
+
+    .attendance-layout { grid-template-columns: 1fr !important; }
+    .list-wrapper { max-height: 260px !important; }
+
+    .student-card-header { padding: 14px; gap: 12px; }
+    .student-id-photo { width: 64px; height: 64px; font-size: 22px; }
+    .student-meta-name { font-size: 20px; }
+
+    .action-grid { grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 14px 12px; }
+    .action-btn-large { padding: 12px; }
+    .action-label { font-size: 13px; }
+    .action-time { font-size: 10px; }
+
+    .time-input-group { padding: 0 14px 12px; flex-wrap: wrap; }
+    .time-field { flex: 1; min-width: 120px; }
+    .time-input { width: 100%; }
+
+    .options-grid { grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 14px 12px; }
+    .option-label { font-size: 12px; }
+    .option-sublabel { font-size: 10px; }
+
+    .remarks-grid { grid-template-columns: 1fr; gap: 8px; padding: 0 14px 12px; }
+
+    .card-header { padding: 12px 14px; }
+    .card-title { font-size: 16px; }
+    .save-bar { padding: 10px 14px; }
+
+    .form-grid { grid-template-columns: 1fr !important; padding: 14px; gap: 12px; }
+    .form-group.full { grid-column: 1; }
+
+    .report-filters { padding: 12px 14px; gap: 8px; }
+    .filter-select { font-size: 12px; padding: 6px 8px; }
+    .report-stats { padding: 12px 14px; gap: 10px;
+      grid-template-columns: repeat(3, 1fr); }
+    .stat-card { padding: 10px; }
+    .stat-number { font-size: 22px; }
+    .stat-label { font-size: 10px; }
+    .report-table-wrapper { padding: 0 14px 14px; }
+
+    .group-filters { padding: 10px 12px 0 !important; gap: 5px; }
+    .group-chip { padding: 4px 10px; font-size: 11px; }
+    .search-box { margin: 8px 10px; }
+
+    .modal { width: 100%; max-width: 100%; border-radius: var(--radius) var(--radius) 0 0;
+      position: fixed; bottom: 0; left: 0; right: 0; max-height: 90vh; overflow-y: auto; }
+    .modal-overlay { align-items: flex-end; }
+    .modal-body { padding: 16px; }
+    .modal-body .form-group { margin-bottom: 4px; }
+    .modal-body > div { grid-template-columns: 1fr !important; gap: 10px; }
+
+    .attendance-log { padding: 0 14px 14px; }
+    .log-table { font-size: 11px; }
+    .log-table th, .log-table td { padding: 5px 6px; }
+
+    .holiday-add-row { flex-wrap: wrap; padding: 10px 12px; gap: 6px; }
+    .holiday-add-row input[type=date] { flex: 0 0 140px; }
+
+    .semester-detail-form { grid-template-columns: 1fr !important; }
+  }
 
   .page { display: none; }
   .page.active { display: block; }
@@ -406,7 +494,7 @@
 
       <!-- SEMESTER PAGE -->
       <div class="page" id="page-semester">
-        <div class="attendance-layout">
+        <div class="attendance-layout" style="display:grid;grid-template-columns:300px 1fr;gap:20px;align-items:start;">
           <div class="card">
             <div class="card-header"><div class="card-title">Semesters</div><button class="btn btn-sage btn-sm" onclick="openAddSemesterModal()">+ Add</button></div>
             <ul class="student-list" id="semester-list" style="max-height:calc(100vh-180px);overflow-y:auto;"></ul>
@@ -476,7 +564,10 @@
 // CONFIG & STATE
 // ════════════════════════════════════════
 const CONFIG_KEY = 'jwm_api_url';
-let API_URL = localStorage.getItem(CONFIG_KEY) || '';
+// ─── PASTE YOUR APPS SCRIPT URL BELOW (between the quotes) ───────────────
+const HARDCODED_URL = 'https://script.google.com/macros/s/AKfycbwlhJZUl3iTD86xZp5f66tTCrJ7CZ4380leNjJzaKk5E1IicCZTW-ONdjE-533ll7OA/exec';
+// ─────────────────────────────────────────────────────────────────────────
+let API_URL = localStorage.getItem(CONFIG_KEY) || HARDCODED_URL;
 
 let db = { students: [], attendance: {}, semesters: [], activeSemesterId: null };
 
@@ -663,8 +754,9 @@ const PAGE_TITLES = { attendance: 'Attendance', students: 'Student Information',
 function navigate(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.bottom-nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
-  document.querySelector(`[data-page="${page}"]`).classList.add('active');
+  document.querySelectorAll(`[data-page="${page}"]`).forEach(el => el.classList.add('active'));
   document.getElementById('page-title').textContent = PAGE_TITLES[page];
   if (page === 'attendance') renderStudentList();
   if (page === 'students') renderStuInfoList();
@@ -1110,7 +1202,7 @@ function renderSemesterDetail() {
           <button class="btn btn-danger btn-sm" onclick="deleteSemester('${sem.id}')">Delete</button>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;padding:20px 24px;">
+      <div class="semester-detail-form" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;padding:20px 24px;">
         <div class="form-group"><div class="form-label">Semester Name</div><input class="form-input" type="text" value="${sem.name}" onchange="updateSemesterField('${sem.id}','name',this.value)"></div>
         <div class="form-group"><div class="form-label">Start Date</div><input class="form-input" type="date" value="${sem.startDate||''}" onchange="updateSemesterField('${sem.id}','startDate',this.value)"></div>
         <div class="form-group"><div class="form-label">End Date</div><input class="form-input" type="date" value="${sem.endDate||''}" onchange="updateSemesterField('${sem.id}','endDate',this.value)"></div>
@@ -1336,5 +1428,22 @@ document.querySelectorAll('.modal-overlay').forEach(o => { o.addEventListener('c
 // ════════════════════════════════════════
 init();
 </script>
+
+  <!-- BOTTOM NAV (mobile) -->
+  <nav id="bottom-nav">
+    <div class="bottom-nav-item active" data-page="attendance" onclick="navigate('attendance')">
+      <span class="bnav-icon">📋</span><span>Attendance</span>
+    </div>
+    <div class="bottom-nav-item" data-page="students" onclick="navigate('students')">
+      <span class="bnav-icon">👤</span><span>Students</span>
+    </div>
+    <div class="bottom-nav-item" data-page="semester" onclick="navigate('semester')">
+      <span class="bnav-icon">📅</span><span>Semester</span>
+    </div>
+    <div class="bottom-nav-item" data-page="reports" onclick="navigate('reports')">
+      <span class="bnav-icon">📊</span><span>Reports</span>
+    </div>
+  </nav>
+
 </body>
 </html>
