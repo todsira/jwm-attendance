@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JWM Attendance System</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sage: #7a9e7e; --sage-light: #a8c5ab; --sage-pale: #e8f0e9;
+    --forest: #3d6b52; --forest-dark: #2a4a39;
+    --warm: #c4956a; --warm-light: #e8c9a8;
+    --cream: #faf7f2; --parchment: #f2ede4;
+    --ink: #2c2c2c; --ink-soft: #5a5a5a; --ink-faint: #9a9a9a;
+    --border: #ddd8cf; --border-soft: #e8e3db;
+    --white: #ffffff;
+    --shadow: 0 2px 12px rgba(44,44,44,0.08);
+    --shadow-lg: 0 8px 32px rgba(44,44,44,0.12);
+    --radius: 12px; --radius-sm: 8px;
+    --nd-color: #5b8fa8; --nd-light: #dbeaf2;
+    --bkk-color: #c4956a; --bkk-light: #f5e6d3;
+    --absent-color: #e07070;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--ink); min-height: 100vh; font-size: 14px; }
+
+  /* LOADER */
+  #global-loader {
+    position: fixed; inset: 0; background: var(--forest-dark);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 9999; transition: opacity 0.4s;
+  }
+  #global-loader.hidden { opacity: 0; pointer-events: none; }
+  .loader-logo { font-family: 'Cormorant Garamond', serif; font-size: 48px; font-weight: 600; color: white; margin-bottom: 12px; }
+  .loader-sub { font-size: 13px; color: var(--sage-light); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 32px; }
+  .loader-bar { width: 200px; height: 3px; background: rgba(255,255,255,0.15); border-radius: 2px; overflow: hidden; }
+  .loader-fill { height: 100%; background: var(--sage-light); border-radius: 2px; animation: loading 1.5s ease-in-out infinite; }
+  @keyframes loading { 0%{width:0%} 50%{width:70%} 100%{width:100%} }
+  .loader-status { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 16px; }
+
+  /* CONFIG SCREEN */
+  #config-screen {
+    position: fixed; inset: 0; background: var(--forest-dark);
+    display: flex; align-items: center; justify-content: center; z-index: 9998;
+  }
+  #config-screen.hidden { display: none; }
+  .config-box {
+    background: white; border-radius: var(--radius); padding: 40px; width: 500px; max-width: 95vw;
+    box-shadow: var(--shadow-lg);
+  }
+  .config-title { font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 600; color: var(--forest-dark); margin-bottom: 8px; }
+  .config-sub { font-size: 13px; color: var(--ink-faint); margin-bottom: 28px; line-height: 1.6; }
+  .config-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--ink-faint); margin-bottom: 6px; }
+  .config-input {
+    width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink);
+    margin-bottom: 20px; transition: border-color 0.2s;
+  }
+  .config-input:focus { outline: none; border-color: var(--sage); }
+  .config-steps { background: var(--parchment); border-radius: var(--radius-sm); padding: 16px; margin-bottom: 24px; font-size: 12px; line-height: 1.8; color: var(--ink-soft); }
+  .config-steps ol { padding-left: 18px; }
+  .config-steps code { background: var(--border-soft); padding: 1px 6px; border-radius: 4px; font-size: 11px; }
+  .config-error { color: var(--absent-color); font-size: 12px; margin-top: -12px; margin-bottom: 16px; display: none; }
+
+  /* LAYOUT */
+  #app { display: flex; min-height: 100vh; }
+  #sidebar {
+    width: 220px; background: var(--forest-dark); display: flex; flex-direction: column;
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
+  }
+  .sidebar-logo { padding: 24px 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .logo-badge {
+    width: 44px; height: 44px; background: var(--sage); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 600; color: white; margin-bottom: 12px;
+  }
+  .school-name { font-family: 'Cormorant Garamond', serif; font-size: 18px; font-weight: 600; color: white; line-height: 1.3; margin-bottom: 4px; }
+  .tagline { font-size: 10px; color: var(--sage-light); letter-spacing: 1.5px; text-transform: uppercase; }
+  .nav-section-label { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,255,255,0.35); padding: 20px 20px 8px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 12px; padding: 12px 20px;
+    color: rgba(255,255,255,0.65); cursor: pointer; transition: all 0.2s;
+    font-size: 13px; border-left: 3px solid transparent;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.06); color: white; }
+  .nav-item.active { background: rgba(122,158,126,0.2); color: var(--sage-light); border-left-color: var(--sage-light); font-weight: 500; }
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-footer { margin-top: auto; padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.1); }
+  .sync-indicator { display: flex; align-items: center; gap: 6px; font-size: 11px; color: rgba(255,255,255,0.4); margin-bottom: 8px; }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--sage-light); }
+  .sync-dot.syncing { animation: pulse 1s infinite; background: var(--warm-light); }
+  .sync-dot.error { background: #e07070; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .semester-badge { font-size: 11px; color: rgba(255,255,255,0.5); margin-bottom: 4px; }
+  .semester-name { font-size: 12px; color: var(--warm-light); font-weight: 500; }
+
+  #main { margin-left: 220px; flex: 1; display: flex; flex-direction: column; }
+  #topbar {
+    background: var(--white); border-bottom: 1px solid var(--border);
+    padding: 0 28px; height: 60px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 50;
+  }
+  .topbar-title { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 600; color: var(--forest-dark); }
+  .date-display { background: var(--parchment); padding: 6px 14px; border-radius: 20px; font-weight: 500; color: var(--forest); font-size: 13px; }
+  #content { padding: 28px; flex: 1; }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* CARDS */
+  .card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border-soft); box-shadow: var(--shadow); }
+  .card-header { padding: 18px 24px; border-bottom: 1px solid var(--border-soft); display: flex; align-items: center; justify-content: space-between; }
+  .card-title { font-family: 'Cormorant Garamond', serif; font-size: 18px; font-weight: 600; color: var(--forest-dark); }
+
+  /* BUTTONS */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius-sm); border: none; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; transition: all 0.2s; }
+  .btn-primary { background: var(--forest); color: white; }
+  .btn-primary:hover { background: var(--forest-dark); }
+  .btn-sage { background: var(--sage); color: white; }
+  .btn-sage:hover { background: var(--forest); }
+  .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--ink-soft); }
+  .btn-outline:hover { border-color: var(--sage); color: var(--forest); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-danger { background: #e07070; color: white; }
+  .btn-danger:hover { background: #c85c5c; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* CAMPUS TOGGLE */
+  .campus-toggle { display: inline-flex; background: var(--parchment); border-radius: 24px; padding: 4px; gap: 2px; }
+  .campus-btn { padding: 6px 18px; border-radius: 20px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; letter-spacing: 0.5px; transition: all 0.2s; background: transparent; color: var(--ink-faint); }
+  .campus-btn.nd.active { background: var(--nd-color); color: white; }
+  .campus-btn.bkk.active { background: var(--bkk-color); color: white; }
+  .campus-btn:hover:not(.active) { background: var(--border-soft); color: var(--ink); }
+
+  /* GROUP FILTERS */
+  .group-filters { display: flex; gap: 8px; flex-wrap: wrap; }
+  .group-chip { padding: 6px 16px; border-radius: 20px; border: 1.5px solid var(--border); cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s; background: white; color: var(--ink-soft); }
+  .group-chip.active[data-group="all"] { background: var(--forest-dark); border-color: var(--forest-dark); color: white; }
+  .group-chip.active[data-group="primary"] { background: var(--sage); border-color: var(--sage); color: white; }
+  .group-chip.active[data-group="elementary"] { background: var(--warm); border-color: var(--warm); color: white; }
+  .group-chip.active[data-group="adolescent"] { background: var(--nd-color); border-color: var(--nd-color); color: white; }
+
+  /* STUDENT LIST */
+  .list-wrapper { overflow-y: auto; }
+  .student-list { list-style: none; }
+  .student-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; cursor: pointer; border-bottom: 1px solid var(--border-soft); transition: background 0.15s; }
+  .student-item:hover { background: var(--parchment); }
+  .student-item.selected { background: var(--sage-pale); border-left: 3px solid var(--sage); }
+  .student-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--parchment); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: var(--forest); overflow: hidden; flex-shrink: 0; }
+  .student-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .student-item-info { flex: 1; min-width: 0; }
+  .student-item-name { font-weight: 500; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .student-item-sub { font-size: 11px; color: var(--ink-faint); }
+  .section-divider { background: var(--parchment); padding: 6px 16px; font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--ink-faint); border-bottom: 1px solid var(--border-soft); }
+
+  /* ATTENDANCE */
+  .attendance-layout { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: start; }
+  .student-card-header { display: flex; align-items: center; gap: 20px; padding: 20px 24px; }
+  .student-id-photo { width: 80px; height: 80px; border-radius: var(--radius-sm); background: var(--parchment); display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 700; color: var(--forest); flex-shrink: 0; overflow: hidden; }
+  .student-id-photo img { width: 100%; height: 100%; object-fit: cover; }
+  .student-meta-name { font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 600; color: var(--forest-dark); margin-bottom: 4px; }
+  .student-meta-details { display: flex; gap: 16px; flex-wrap: wrap; }
+  .meta-pill { font-size: 12px; color: var(--ink-soft); }
+  .meta-pill .label { color: var(--ink-faint); }
+  .student-notes { font-size: 12px; color: var(--ink-soft); background: var(--parchment); padding: 6px 12px; border-radius: var(--radius-sm); margin-top: 8px; font-style: italic; }
+  .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 24px 16px; }
+  .action-btn-large { padding: 16px 20px; border-radius: var(--radius); border: 2px solid transparent; cursor: pointer; font-family: 'DM Sans', sans-serif; text-align: left; display: flex; flex-direction: column; gap: 4px; transition: all 0.2s; }
+  .action-icon { font-size: 22px; }
+  .action-label { font-size: 16px; font-weight: 700; }
+  .action-time { font-size: 11px; font-weight: 400; opacity: 0.7; }
+  .btn-check-in { background: #e8f5e9; border-color: #81c784; color: #2e7d32; }
+  .btn-check-in.active { background: #2e7d32; color: white; border-color: #2e7d32; }
+  .btn-check-out { background: #fff3e0; border-color: #ffb74d; color: #e65100; }
+  .btn-check-out.active { background: #e65100; color: white; border-color: #e65100; }
+  .time-input-group { display: flex; gap: 8px; align-items: flex-end; padding: 0 24px 16px; flex-wrap: wrap; }
+  .time-field { display: flex; flex-direction: column; gap: 4px; }
+  .time-field label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--ink-faint); }
+  .time-input { padding: 8px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); background: white; width: 130px; }
+  .time-input:focus { outline: none; border-color: var(--sage); }
+  .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 24px 16px; }
+  .option-card { background: var(--parchment); border-radius: var(--radius-sm); padding: 14px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; border: 1.5px solid transparent; transition: all 0.2s; }
+  .option-card:hover { border-color: var(--border); background: white; }
+  .option-card.checked { border-color: var(--sage); background: var(--sage-pale); }
+  .option-checkbox { width: 20px; height: 20px; border-radius: 5px; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 12px; transition: all 0.2s; flex-shrink: 0; }
+  .option-card.checked .option-checkbox { background: var(--sage); border-color: var(--sage); color: white; }
+  .option-label { font-size: 13px; font-weight: 500; }
+  .option-sublabel { font-size: 11px; color: var(--ink-faint); }
+  .remarks-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 24px 16px; }
+  .remark-box { display: flex; flex-direction: column; gap: 6px; }
+  .remark-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--ink-faint); }
+  .remark-input { padding: 10px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); background: white; resize: vertical; min-height: 72px; transition: border-color 0.2s; }
+  .remark-input:focus { outline: none; border-color: var(--sage); }
+  .save-bar { padding: 14px 24px; border-top: 1px solid var(--border-soft); display: flex; align-items: center; gap: 12px; background: var(--parchment); border-radius: 0 0 var(--radius) var(--radius); }
+  .save-status { flex: 1; font-size: 12px; font-weight: 500; }
+  .save-status.saving { color: var(--warm); }
+  .save-status.saved { color: var(--sage); }
+  .save-status.error { color: var(--absent-color); }
+  .attendance-log { padding: 0 24px 20px; }
+  .log-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--ink-faint); margin-bottom: 10px; }
+  .log-table { width: 100%; font-size: 12px; border-collapse: collapse; }
+  .log-table th { text-align: left; padding: 6px 10px; background: var(--parchment); color: var(--ink-faint); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .log-table td { padding: 7px 10px; border-bottom: 1px solid var(--border-soft); }
+
+  /* CAMPUS TAGS */
+  .campus-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .campus-tag.nd { background: var(--nd-light); color: var(--nd-color); }
+  .campus-tag.bkk { background: var(--bkk-light); color: var(--bkk-color); }
+  .group-label { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+  .group-label.primary { background: rgba(122,158,126,0.15); color: var(--sage); }
+  .group-label.elementary { background: rgba(196,149,106,0.15); color: var(--warm); }
+  .group-label.adolescent { background: rgba(91,143,168,0.15); color: var(--nd-color); }
+  .status-present { color: #2e7d32; font-weight: 600; }
+  .status-absent { color: var(--absent-color); font-weight: 600; }
+  .status-loa { color: var(--warm); font-weight: 600; }
+
+  /* FORMS */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 24px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+  .form-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--ink-faint); }
+  .form-input { padding: 10px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); background: white; transition: border-color 0.2s; }
+  .form-input:focus { outline: none; border-color: var(--sage); }
+  select.form-input { cursor: pointer; }
+  textarea.form-input { resize: vertical; min-height: 80px; }
+  .photo-upload-area { width: 120px; height: 120px; border-radius: var(--radius); border: 2px dashed var(--border); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; overflow: hidden; position: relative; }
+  .photo-upload-area:hover { border-color: var(--sage); background: var(--sage-pale); }
+  .photo-upload-area img { width: 100%; height: 100%; object-fit: cover; position: absolute; }
+  .photo-upload-hint { font-size: 11px; color: var(--ink-faint); text-align: center; z-index: 1; }
+  .photo-upload-icon { font-size: 24px; z-index: 1; }
+
+  /* SEMESTER */
+  .semester-item { padding: 14px 20px; border-bottom: 1px solid var(--border-soft); display: flex; align-items: center; gap: 12px; cursor: pointer; transition: background 0.15s; }
+  .semester-item:hover { background: var(--parchment); }
+  .semester-item.active-sem { background: var(--sage-pale); border-left: 3px solid var(--sage); }
+  .semester-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
+  .semester-dot.current { background: var(--sage); }
+  .holiday-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--border-soft); }
+  .holiday-item-date { font-size: 12px; font-weight: 600; color: var(--forest); min-width: 110px; }
+  .holiday-remove { background: none; border: none; cursor: pointer; color: var(--ink-faint); font-size: 18px; transition: color 0.2s; }
+  .holiday-remove:hover { color: var(--absent-color); }
+  .holiday-add-row { display: flex; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--border-soft); align-items: center; }
+  .holiday-add-row input { flex: 1; padding: 8px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); }
+  .holiday-add-row input:focus { outline: none; border-color: var(--sage); }
+
+  /* REPORTS */
+  .report-filters { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; padding: 20px 24px; border-bottom: 1px solid var(--border-soft); }
+  .filter-group { display: flex; flex-direction: column; gap: 5px; }
+  .filter-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--ink-faint); }
+  .filter-select { padding: 8px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 13px; background: white; color: var(--ink); cursor: pointer; }
+  .report-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; padding: 20px 24px; border-bottom: 1px solid var(--border-soft); }
+  .stat-card { background: var(--parchment); border-radius: var(--radius-sm); padding: 16px; text-align: center; }
+  .stat-number { font-size: 32px; font-weight: 700; font-family: 'Cormorant Garamond', serif; color: var(--forest-dark); }
+  .stat-label { font-size: 11px; color: var(--ink-faint); margin-top: 2px; }
+  .report-table-wrapper { padding: 0 24px 24px; overflow-x: auto; margin-top: 16px; }
+  .report-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .report-table th { text-align: left; padding: 10px 12px; background: var(--parchment); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--ink-faint); border-bottom: 1px solid var(--border); }
+  .report-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-soft); }
+  .report-table tr:hover td { background: var(--parchment); }
+  .pct-bar { display: flex; align-items: center; gap: 8px; }
+  .pct-track { flex: 1; height: 6px; background: var(--border-soft); border-radius: 3px; overflow: hidden; min-width: 50px; }
+  .pct-fill { height: 100%; border-radius: 3px; background: var(--sage); }
+  .pct-fill.warn { background: var(--warm); }
+  .pct-fill.danger { background: var(--absent-color); }
+
+  /* EMPTY */
+  .empty-state { text-align: center; padding: 60px 40px; color: var(--ink-faint); }
+  .empty-state .empty-icon { font-size: 48px; margin-bottom: 16px; }
+  .empty-state h3 { font-family: 'Cormorant Garamond', serif; font-size: 22px; color: var(--ink-soft); margin-bottom: 8px; }
+
+  /* SEARCH */
+  .search-box { position: relative; margin: 12px 16px; }
+  .search-box input { width: 100%; padding: 8px 12px 8px 32px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); background: var(--parchment); }
+  .search-box input:focus { outline: none; border-color: var(--sage); background: white; }
+  .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--ink-faint); font-size: 14px; }
+
+  /* TOAST */
+  #toast { position: fixed; bottom: 28px; right: 28px; background: var(--forest-dark); color: white; padding: 12px 20px; border-radius: var(--radius); font-size: 13px; font-weight: 500; z-index: 1000; transform: translateY(80px); opacity: 0; transition: all 0.3s; display: flex; align-items: center; gap: 8px; }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.error-toast { background: var(--absent-color); }
+
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(44,44,44,0.4); backdrop-filter: blur(2px); z-index: 500; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal { background: white; border-radius: var(--radius); width: 480px; max-width: 95vw; box-shadow: var(--shadow-lg); transform: translateY(20px); transition: transform 0.2s; }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal-header { padding: 20px 24px; border-bottom: 1px solid var(--border-soft); display: flex; align-items: center; justify-content: space-between; }
+  .modal-title { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 600; color: var(--forest-dark); }
+  .modal-close { background: none; border: none; cursor: pointer; font-size: 22px; color: var(--ink-faint); transition: color 0.2s; }
+  .modal-close:hover { color: var(--ink); }
+  .modal-body { padding: 24px; }
+  .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border-soft); display: flex; gap: 10px; justify-content: flex-end; }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- GLOBAL LOADER -->
+<div id="global-loader">
+  <div class="loader-logo">JW</div>
+  <div class="loader-sub">Montessori Attendance</div>
+  <div class="loader-bar"><div class="loader-fill"></div></div>
+  <div class="loader-status" id="loader-status">Connecting to Google Sheets…</div>
+</div>
+
+<!-- CONFIG SCREEN (shown if no API URL set) -->
+<div id="config-screen" class="hidden">
+  <div class="config-box">
+    <div class="config-title">First-Time Setup</div>
+    <div class="config-sub">Connect your Google Sheets backend. You only need to do this once — the URL is saved in your browser.</div>
+
+    <div class="config-steps">
+      <strong>Setup steps:</strong>
+      <ol>
+        <li>Open the <code>Code.gs</code> file in Google Apps Script</li>
+        <li>Paste your Google Sheet ID into the <code>SHEET_ID</code> variable</li>
+        <li>Run <code>setupSheets()</code> once to create all tabs</li>
+        <li>Click <strong>Deploy → New deployment → Web app</strong></li>
+        <li>Set <em>Execute as: Me</em> · <em>Who has access: Anyone</em></li>
+        <li>Copy the Web App URL and paste it below</li>
+      </ol>
+    </div>
+
+    <div class="config-label">Google Apps Script Web App URL</div>
+    <input class="config-input" type="text" id="api-url-input" placeholder="https://script.google.com/macros/s/.../exec">
+    <div class="config-error" id="config-error">⚠ Could not connect. Please check the URL and try again.</div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;" onclick="saveApiUrl()">
+      Connect & Load Data
+    </button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" style="display:none;">
+  <nav id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-badge">JW</div>
+      <div class="school-name">John Wyatt<br>Montessori</div>
+      <div class="tagline">Attendance System</div>
+    </div>
+    <div class="nav-section-label">Menu</div>
+    <div class="nav-item active" onclick="navigate('attendance')" data-page="attendance"><span class="nav-icon">📋</span><span>Attendance</span></div>
+    <div class="nav-item" onclick="navigate('students')" data-page="students"><span class="nav-icon">👤</span><span>Student Info</span></div>
+    <div class="nav-item" onclick="navigate('semester')" data-page="semester"><span class="nav-icon">📅</span><span>Semester</span></div>
+    <div class="nav-item" onclick="navigate('reports')" data-page="reports"><span class="nav-icon">📊</span><span>Reports</span></div>
+    <div class="sidebar-footer">
+      <div class="sync-indicator"><div class="sync-dot" id="sync-dot"></div><span id="sync-label">Live</span></div>
+      <div class="semester-badge">Active Semester</div>
+      <div class="semester-name" id="sidebar-semester-name">— Not Set —</div>
+    </div>
+  </nav>
+
+  <div id="main">
+    <div id="topbar">
+      <div class="topbar-title" id="page-title">Attendance</div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="btn btn-outline btn-sm" onclick="refreshData()" title="Refresh from Sheets">↻ Refresh</button>
+        <div class="date-display" id="current-date"></div>
+      </div>
+    </div>
+    <div id="content">
+
+      <!-- ATTENDANCE PAGE -->
+      <div class="page active" id="page-attendance">
+        <div class="attendance-layout">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Students</div><span style="font-size:11px;color:var(--ink-faint);" id="att-count"></span></div>
+            <div class="group-filters" style="padding:12px 16px 0;">
+              <div class="group-chip active" data-group="all" onclick="filterGroup('all',this)">All</div>
+              <div class="group-chip" data-group="primary" onclick="filterGroup('primary',this)">Primary & Toddlers</div>
+              <div class="group-chip" data-group="elementary" onclick="filterGroup('elementary',this)">Elementary</div>
+              <div class="group-chip" data-group="adolescent" onclick="filterGroup('adolescent',this)">Adolescents</div>
+            </div>
+            <div class="search-box"><span class="search-icon">🔍</span><input type="text" placeholder="Search student…" id="att-search" oninput="renderStudentList()"></div>
+            <div class="list-wrapper" style="max-height:calc(100vh - 230px);">
+              <ul class="student-list" id="att-student-list"></ul>
+            </div>
+          </div>
+          <div id="att-panel">
+            <div class="card empty-state"><div class="empty-icon">👈</div><h3>Select a Student</h3><p>Choose a student from the list to record attendance</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STUDENT INFO PAGE -->
+      <div class="page" id="page-students">
+        <div class="attendance-layout">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Students</div><button class="btn btn-sage btn-sm" onclick="openAddStudentModal()">+ Add</button></div>
+            <div class="group-filters" style="padding:12px 16px 0;">
+              <div class="group-chip active" data-group="all" onclick="filterStuGroup('all',this)">All</div>
+              <div class="group-chip" data-group="primary" onclick="filterStuGroup('primary',this)">Primary</div>
+              <div class="group-chip" data-group="elementary" onclick="filterStuGroup('elementary',this)">Elementary</div>
+              <div class="group-chip" data-group="adolescent" onclick="filterStuGroup('adolescent',this)">Adolescents</div>
+            </div>
+            <div class="search-box"><span class="search-icon">🔍</span><input type="text" placeholder="Search…" id="stu-search" oninput="renderStuInfoList()"></div>
+            <div class="list-wrapper" style="max-height:calc(100vh - 280px);">
+              <ul class="student-list" id="stu-list"></ul>
+            </div>
+          </div>
+          <div id="stu-detail"><div class="card empty-state"><div class="empty-icon">👈</div><h3>Select a Student</h3></div></div>
+        </div>
+      </div>
+
+      <!-- SEMESTER PAGE -->
+      <div class="page" id="page-semester">
+        <div class="attendance-layout">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Semesters</div><button class="btn btn-sage btn-sm" onclick="openAddSemesterModal()">+ Add</button></div>
+            <ul class="student-list" id="semester-list" style="max-height:calc(100vh-180px);overflow-y:auto;"></ul>
+          </div>
+          <div id="semester-detail"><div class="card empty-state"><div class="empty-icon">📅</div><h3>Select a Semester</h3></div></div>
+        </div>
+      </div>
+
+      <!-- REPORTS PAGE -->
+      <div class="page" id="page-reports">
+        <div class="card">
+          <div class="card-header"><div class="card-title">Attendance Report</div><button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇ Export CSV</button></div>
+          <div class="report-filters">
+            <div class="filter-group"><div class="filter-label">Semester</div><select class="filter-select" id="rpt-semester" onchange="generateReport()"><option value="">All Semesters</option></select></div>
+            <div class="filter-group"><div class="filter-label">Campus</div><select class="filter-select" id="rpt-campus" onchange="generateReport()"><option value="">All Campuses</option><option value="ND">Nong Don (ND)</option><option value="BKK">Bangkok (BKK)</option></select></div>
+            <div class="filter-group"><div class="filter-label">Group</div><select class="filter-select" id="rpt-group" onchange="generateReport()"><option value="">All Groups</option><option value="primary">Primary & Toddlers</option><option value="elementary">Elementary</option><option value="adolescent">Adolescents</option></select></div>
+            <div class="filter-group"><div class="filter-label">Student</div><select class="filter-select" id="rpt-student" onchange="generateReport()"><option value="">All Students</option></select></div>
+          </div>
+          <div class="report-stats" id="report-stats"></div>
+          <div class="report-table-wrapper">
+            <table class="report-table"><thead><tr><th>Student</th><th>Group</th><th>Campus</th><th>Days Present</th><th>Half Days</th><th>Late</th><th>After School</th><th>LOA</th><th>Absent</th><th>Attendance %</th></tr></thead><tbody id="report-tbody"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="toast">✓ <span id="toast-msg"></span></div>
+
+<!-- ADD STUDENT MODAL -->
+<div class="modal-overlay" id="modal-add-student">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">Add New Student</div><button class="modal-close" onclick="closeModal('modal-add-student')">×</button></div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group full"><div class="form-label">Full Name *</div><input class="form-input" type="text" id="new-stu-name" placeholder="Student full name"></div>
+        <div class="form-group"><div class="form-label">Date of Birth</div><input class="form-input" type="date" id="new-stu-dob"></div>
+        <div class="form-group"><div class="form-label">Date of Joining</div><input class="form-input" type="date" id="new-stu-join"></div>
+        <div class="form-group"><div class="form-label">Group *</div><select class="form-input" id="new-stu-group"><option value="primary">Primary & Toddlers</option><option value="elementary">Elementary</option><option value="adolescent">Adolescents</option></select></div>
+        <div class="form-group"><div class="form-label">Main Campus</div><select class="form-input" id="new-stu-campus"><option value="ND">Nong Don (ND)</option><option value="BKK">Bangkok (BKK)</option></select></div>
+        <div class="form-group full"><div class="form-label">Notes</div><input class="form-input" type="text" id="new-stu-notes" placeholder="Any notes…"></div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-add-student')">Cancel</button><button class="btn btn-sage" id="btn-add-student" onclick="addStudent()">Add Student</button></div>
+  </div>
+</div>
+
+<!-- ADD SEMESTER MODAL -->
+<div class="modal-overlay" id="modal-add-semester">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">New Semester</div><button class="modal-close" onclick="closeModal('modal-add-semester')">×</button></div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group full"><div class="form-label">Semester Name *</div><input class="form-input" type="text" id="new-sem-name" placeholder="e.g. Semester 1 / 2025"></div>
+        <div class="form-group"><div class="form-label">Start Date *</div><input class="form-input" type="date" id="new-sem-start"></div>
+        <div class="form-group"><div class="form-label">End Date *</div><input class="form-input" type="date" id="new-sem-end"></div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-add-semester')">Cancel</button><button class="btn btn-sage" onclick="addSemester()">Create Semester</button></div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════
+// CONFIG & STATE
+// ════════════════════════════════════════
+const CONFIG_KEY = 'jwm_api_url';
+let API_URL = localStorage.getItem(CONFIG_KEY) || '';
+
+let db = { students: [], attendance: {}, semesters: [], activeSemesterId: null };
+
+let attFilter = 'all';
+let selectedAttStudentId = null;
+let selectedCampus = 'ND';
+let stuFilter = 'all';
+let selectedStuId = null;
+let selectedSemId = null;
+
+// Debounce timers for attendance saving
+let saveTimers = {};
+
+// ════════════════════════════════════════
+// API
+// ════════════════════════════════════════
+async function api(action, data = null) {
+  setSyncing(true);
+  try {
+    let res;
+    if (data === null) {
+      res = await fetch(`${API_URL}?action=${action}`);
+    } else {
+      res = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action, data }),
+        headers: { 'Content-Type': 'text/plain' } // avoid CORS preflight
+      });
+    }
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || 'API error');
+    setSyncing(false);
+    return json.data;
+  } catch (err) {
+    setSyncing(false, true);
+    throw err;
+  }
+}
+
+function setSyncing(active, error = false) {
+  const dot = document.getElementById('sync-dot');
+  const label = document.getElementById('sync-label');
+  if (!dot) return;
+  dot.className = 'sync-dot' + (active ? ' syncing' : error ? ' error' : '');
+  label.textContent = active ? 'Syncing…' : error ? 'Error' : 'Live';
+}
+
+// ════════════════════════════════════════
+// STARTUP
+// ════════════════════════════════════════
+async function init() {
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  if (!API_URL) {
+    document.getElementById('global-loader').classList.add('hidden');
+    document.getElementById('config-screen').classList.remove('hidden');
+    return;
+  }
+
+  try {
+    document.getElementById('loader-status').textContent = 'Loading data from Google Sheets…';
+    await loadAll();
+    document.getElementById('global-loader').classList.add('hidden');
+    document.getElementById('app').style.display = 'flex';
+    navigate('attendance');
+  } catch (err) {
+    document.getElementById('loader-status').textContent = '⚠ Connection failed. Reconfiguring…';
+    setTimeout(() => {
+      document.getElementById('global-loader').classList.add('hidden');
+      document.getElementById('config-screen').classList.remove('hidden');
+    }, 1500);
+  }
+}
+
+async function saveApiUrl() {
+  const url = document.getElementById('api-url-input').value.trim();
+  if (!url) return;
+  document.getElementById('config-error').style.display = 'none';
+  API_URL = url;
+  try {
+    document.getElementById('loader-status').textContent = 'Connecting…';
+    document.getElementById('config-screen').classList.add('hidden');
+    document.getElementById('global-loader').classList.remove('hidden');
+    await loadAll();
+    localStorage.setItem(CONFIG_KEY, url);
+    document.getElementById('global-loader').classList.add('hidden');
+    document.getElementById('app').style.display = 'flex';
+    navigate('attendance');
+  } catch (err) {
+    document.getElementById('global-loader').classList.add('hidden');
+    document.getElementById('config-screen').classList.remove('hidden');
+    document.getElementById('config-error').style.display = 'block';
+    document.getElementById('config-error').textContent = '⚠ ' + err.message;
+  }
+}
+
+async function loadAll() {
+  const result = await api('getAll');
+  db.students = result.students || [];
+  db.attendance = result.attendance || {};
+  db.semesters = result.semesters || [];
+  db.activeSemesterId = result.activeSemesterId || null;
+  updateSidebarSemester();
+}
+
+async function refreshData() {
+  try {
+    await loadAll();
+    if (selectedAttStudentId) renderAttPanel();
+    renderStudentList();
+    renderStuInfoList();
+    renderSemesterList();
+    showToast('Data refreshed from Sheets');
+  } catch (e) {
+    showToast('Refresh failed: ' + e.message, true);
+  }
+}
+
+// ════════════════════════════════════════
+// UTILITIES
+// ════════════════════════════════════════
+function getTodayStr() {
+  const d = new Date();
+  const bkk = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+  return bkk.toISOString().split('T')[0];
+}
+
+function getNowBKK() {
+  const d = new Date();
+  const bkk = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+  return bkk.toTimeString().slice(0, 5);
+}
+
+function formatDate(str) {
+  if (!str) return '—';
+  return new Date(str + 'T00:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function getAge(dob) {
+  if (!dob) return null;
+  const birth = new Date(dob);
+  const now = new Date();
+  let age = now.getFullYear() - birth.getFullYear();
+  if (now.getMonth() - birth.getMonth() < 0 || (now.getMonth() === birth.getMonth() && now.getDate() < birth.getDate())) age--;
+  return age;
+}
+
+function attKey(studentId, date) { return `${studentId}_${date}`; }
+
+function getGroupLabel(g) {
+  return { primary: 'Primary & Toddlers', elementary: 'Elementary', adolescent: 'Adolescents' }[g] || g;
+}
+
+function initials(name) { return (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(); }
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  t.className = isError ? 'error-toast show' : 'show';
+  setTimeout(() => t.className = '', 2800);
+}
+
+function updateClock() {
+  const d = new Date();
+  const bkk = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+  const opts = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' };
+  document.getElementById('current-date').textContent =
+    bkk.toLocaleDateString('en-US', opts) + ' · ' + bkk.toTimeString().slice(0, 5);
+}
+
+function updateSidebarSemester() {
+  const sem = db.semesters.find(s => s.id === db.activeSemesterId);
+  document.getElementById('sidebar-semester-name').textContent = sem ? sem.name : '— Not Set —';
+}
+
+// ════════════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════════════
+const PAGE_TITLES = { attendance: 'Attendance', students: 'Student Information', semester: 'Semester Management', reports: 'Attendance Reports' };
+
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelector(`[data-page="${page}"]`).classList.add('active');
+  document.getElementById('page-title').textContent = PAGE_TITLES[page];
+  if (page === 'attendance') renderStudentList();
+  if (page === 'students') renderStuInfoList();
+  if (page === 'semester') renderSemesterList();
+  if (page === 'reports') { populateReportFilters(); generateReport(); }
+}
+
+// ════════════════════════════════════════
+// ATTENDANCE PAGE
+// ════════════════════════════════════════
+function filterGroup(group, el) {
+  attFilter = group;
+  document.querySelectorAll('#page-attendance .group-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderStudentList();
+}
+
+function renderStudentList() {
+  const search = (document.getElementById('att-search')?.value || '').toLowerCase();
+  const list = document.getElementById('att-student-list');
+  if (!list) return;
+  list.innerHTML = '';
+  const groups = attFilter === 'all' ? ['primary', 'elementary', 'adolescent'] : [attFilter];
+  let total = 0;
+  const today = getTodayStr();
+
+  groups.forEach(group => {
+    const students = db.students.filter(s => s.group === group && (!search || s.name.toLowerCase().includes(search)));
+    if (!students.length) return;
+    const div = document.createElement('li');
+    div.className = 'section-divider';
+    div.textContent = getGroupLabel(group);
+    list.appendChild(div);
+    students.forEach(s => {
+      total++;
+      const rec = db.attendance[attKey(s.id, today)] || {};
+      const li = document.createElement('li');
+      li.className = 'student-item' + (s.id === selectedAttStudentId ? ' selected' : '');
+      li.onclick = () => selectAttStudent(s.id);
+      const statusDot = rec.checkOut ? '🔵' : rec.checkIn ? '🟢' : '';
+      li.innerHTML = `
+        <div class="student-avatar">${s.photo ? `<img src="${s.photo}">` : initials(s.name)}</div>
+        <div class="student-item-info">
+          <div class="student-item-name">${s.name}</div>
+          <div class="student-item-sub">${rec.checkIn ? 'In: ' + rec.checkIn : ''}${rec.checkOut ? ' · Out: ' + rec.checkOut : ''}</div>
+        </div>
+        <span>${statusDot}</span>`;
+      list.appendChild(li);
+    });
+  });
+  document.getElementById('att-count').textContent = total + ' students';
+}
+
+function selectAttStudent(id) {
+  selectedAttStudentId = id;
+  const today = getTodayStr();
+  const key = attKey(id, today);
+  if (!db.attendance[key]) db.attendance[key] = { campus: selectedCampus };
+  selectedCampus = db.attendance[key].campus || 'ND';
+  renderStudentList();
+  renderAttPanel();
+}
+
+function renderAttPanel() {
+  const s = db.students.find(x => x.id === selectedAttStudentId);
+  if (!s) return;
+  const today = getTodayStr();
+  const key = attKey(s.id, today);
+  if (!db.attendance[key]) db.attendance[key] = {};
+  const rec = db.attendance[key];
+  selectedCampus = rec.campus || selectedCampus || 'ND';
+
+  const recentDays = [];
+  for (let i = 1; i <= 7; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dStr = d.toISOString().split('T')[0];
+    const r = db.attendance[attKey(s.id, dStr)];
+    if (r) recentDays.push({ date: dStr, ...r });
+  }
+
+  document.getElementById('att-panel').innerHTML = `
+    <div class="card">
+      <div class="student-card-header">
+        <div class="student-id-photo">${s.photo ? `<img src="${s.photo}">` : initials(s.name)}</div>
+        <div style="flex:1;">
+          <div class="student-meta-name">${s.name}</div>
+          <div class="student-meta-details">
+            <span class="meta-pill"><span class="label">Age:</span> ${getAge(s.dob) !== null ? getAge(s.dob) + ' yrs' : '—'}</span>
+            <span class="meta-pill"><span class="label">Group:</span> ${getGroupLabel(s.group)}</span>
+            <span class="meta-pill"><span class="label">Main Campus:</span> ${s.mainCampus || '—'}</span>
+          </div>
+          ${s.notes ? `<div class="student-notes">📝 ${s.notes}</div>` : ''}
+        </div>
+      </div>
+
+      <div style="padding:0 24px 16px;">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--ink-faint);margin-bottom:8px;">Today · ${formatDate(today)}</div>
+        <div class="campus-toggle">
+          <button class="campus-btn nd ${selectedCampus === 'ND' ? 'active' : ''}" onclick="setCampus('ND')">ND</button>
+          <button class="campus-btn bkk ${selectedCampus === 'BKK' ? 'active' : ''}" onclick="setCampus('BKK')">BKK</button>
+        </div>
+      </div>
+
+      <div class="action-grid">
+        <button class="action-btn-large btn-check-in ${rec.checkIn ? 'active' : ''}" onclick="checkAction('in')">
+          <div class="action-icon">✅</div>
+          <div class="action-label">Check IN</div>
+          <div class="action-time">${rec.checkIn ? 'Recorded: ' + rec.checkIn : 'Tap to check in'}</div>
+        </button>
+        <button class="action-btn-large btn-check-out ${rec.checkOut ? 'active' : ''}" onclick="checkAction('out')">
+          <div class="action-icon">🚪</div>
+          <div class="action-label">Check OUT</div>
+          <div class="action-time">${rec.checkOut ? 'Recorded: ' + rec.checkOut : 'Tap to check out'}</div>
+        </button>
+      </div>
+
+      <div class="time-input-group">
+        <div class="time-field"><label>Manual Check-IN</label><input type="time" class="time-input" value="${rec.checkIn || ''}" onchange="setManualTime('checkIn', this.value)"></div>
+        <div class="time-field"><label>Manual Check-OUT</label><input type="time" class="time-input" value="${rec.checkOut || ''}" onchange="setManualTime('checkOut', this.value)"></div>
+      </div>
+
+      <div class="options-grid">
+        <div class="option-card ${rec.afterSchool ? 'checked' : ''}" onclick="toggleOption('afterSchool')">
+          <div class="option-checkbox">${rec.afterSchool ? '✓' : ''}</div>
+          <div><div class="option-label">After School Lessons</div><div class="option-sublabel">Extra activity</div></div>
+        </div>
+        <div class="option-card ${rec.loa ? 'checked' : ''}" onclick="toggleOption('loa')">
+          <div class="option-checkbox">${rec.loa ? '✓' : ''}</div>
+          <div><div class="option-label">Leave of Absence</div><div class="option-sublabel">Approved absence</div></div>
+        </div>
+      </div>
+
+      <div class="remarks-grid">
+        <div class="remark-box">
+          <div class="remark-label">🧑‍🏫 Teacher Remarks</div>
+          <textarea class="remark-input" placeholder="Teacher's note…" onchange="debouncedSave('teacherRemark', this.value)">${rec.teacherRemark || ''}</textarea>
+        </div>
+        <div class="remark-box">
+          <div class="remark-label">👨‍👩‍👧 Parent Remarks</div>
+          <textarea class="remark-input" placeholder="Parent's note…" onchange="debouncedSave('parentRemark', this.value)">${rec.parentRemark || ''}</textarea>
+        </div>
+      </div>
+
+      ${recentDays.length ? `
+      <div class="attendance-log">
+        <div class="log-title">Recent History</div>
+        <table class="log-table">
+          <thead><tr><th>Date</th><th>Campus</th><th>In</th><th>Out</th><th>Status</th></tr></thead>
+          <tbody>${recentDays.map(r => `
+            <tr>
+              <td>${formatDate(r.date)}</td>
+              <td><span class="campus-tag ${(r.campus||'').toLowerCase()}">${r.campus||'—'}</span></td>
+              <td>${r.checkIn||'—'}</td>
+              <td>${r.checkOut||'—'}</td>
+              <td>${r.loa ? '<span class="status-loa">LOA</span>' : r.checkIn ? '<span class="status-present">Present</span>' : '<span class="status-absent">Absent</span>'}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>` : ''}
+
+      <div class="save-bar">
+        <div class="save-status saved" id="att-save-status">✓ Saved to Google Sheets</div>
+        <button class="btn btn-outline btn-sm" onclick="clearToday()">Clear Today</button>
+      </div>
+    </div>`;
+}
+
+function getCurRec() {
+  const key = attKey(selectedAttStudentId, getTodayStr());
+  if (!db.attendance[key]) db.attendance[key] = {};
+  return db.attendance[key];
+}
+
+function setStatus(msg, type = 'saved') {
+  const el = document.getElementById('att-save-status');
+  if (el) { el.textContent = msg; el.className = 'save-status ' + type; }
+}
+
+async function pushAttendance() {
+  const today = getTodayStr();
+  const key = attKey(selectedAttStudentId, today);
+  const rec = db.attendance[key] || {};
+  setStatus('Saving…', 'saving');
+  try {
+    await api('upsertAttendance', { studentId: selectedAttStudentId, date: today, campus: selectedCampus, ...rec });
+    setStatus('✓ Saved to Google Sheets', 'saved');
+    renderStudentList();
+  } catch (e) {
+    setStatus('⚠ Save failed — ' + e.message, 'error');
+  }
+}
+
+function setCampus(campus) {
+  selectedCampus = campus;
+  getCurRec().campus = campus;
+  pushAttendance();
+  renderAttPanel();
+}
+
+function checkAction(type) {
+  const rec = getCurRec();
+  rec.campus = selectedCampus;
+  if (type === 'in') rec.checkIn = getNowBKK();
+  else rec.checkOut = getNowBKK();
+  pushAttendance();
+  renderAttPanel();
+}
+
+function setManualTime(field, val) {
+  getCurRec()[field] = val;
+  pushAttendance();
+}
+
+function toggleOption(field) {
+  const rec = getCurRec();
+  rec[field] = !rec[field];
+  pushAttendance();
+  renderAttPanel();
+}
+
+function debouncedSave(field, val) {
+  getCurRec()[field] = val;
+  clearTimeout(saveTimers[field]);
+  saveTimers[field] = setTimeout(() => pushAttendance(), 1200);
+}
+
+async function clearToday() {
+  if (!confirm('Clear all attendance data for this student today?')) return;
+  const key = attKey(selectedAttStudentId, getTodayStr());
+  db.attendance[key] = {};
+  try {
+    await api('upsertAttendance', { studentId: selectedAttStudentId, date: getTodayStr(), campus: '', checkIn: '', checkOut: '', afterSchool: false, loa: false, teacherRemark: '', parentRemark: '' });
+    showToast("Today's record cleared");
+    renderAttPanel();
+    renderStudentList();
+  } catch (e) { showToast('Failed: ' + e.message, true); }
+}
+
+// ════════════════════════════════════════
+// STUDENT INFO PAGE
+// ════════════════════════════════════════
+function filterStuGroup(group, el) {
+  stuFilter = group;
+  document.querySelectorAll('#page-students .group-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderStuInfoList();
+}
+
+function renderStuInfoList() {
+  const search = (document.getElementById('stu-search')?.value || '').toLowerCase();
+  const list = document.getElementById('stu-list');
+  if (!list) return;
+  list.innerHTML = '';
+  const groups = stuFilter === 'all' ? ['primary','elementary','adolescent'] : [stuFilter];
+  groups.forEach(group => {
+    const students = db.students.filter(s => s.group === group && (!search || s.name.toLowerCase().includes(search)));
+    if (!students.length) return;
+    const div = document.createElement('li'); div.className = 'section-divider'; div.textContent = getGroupLabel(group); list.appendChild(div);
+    students.forEach(s => {
+      const li = document.createElement('li');
+      li.className = 'student-item' + (s.id === selectedStuId ? ' selected' : '');
+      li.onclick = () => { selectedStuId = s.id; renderStuInfoList(); renderStuDetail(); };
+      li.innerHTML = `
+        <div class="student-avatar">${s.photo ? `<img src="${s.photo}">` : initials(s.name)}</div>
+        <div class="student-item-info">
+          <div class="student-item-name">${s.name}</div>
+          <div class="student-item-sub">${s.mainCampus||''} · ${getAge(s.dob) !== null ? getAge(s.dob)+' yrs' : ''}</div>
+        </div>`;
+      list.appendChild(li);
+    });
+  });
+}
+
+function renderStuDetail() {
+  const s = db.students.find(x => x.id === selectedStuId);
+  if (!s) return;
+  const age = getAge(s.dob);
+  document.getElementById('stu-detail').innerHTML = `
+    <div class="card">
+      <div class="card-header"><div class="card-title">Student Profile</div><button class="btn btn-danger btn-sm" onclick="deleteStudent('${s.id}')">Delete</button></div>
+      <div style="padding:24px;display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;">
+        <div>
+          <div class="photo-upload-area" onclick="triggerPhotoUpload('${s.id}')">
+            ${s.photo ? `<img src="${s.photo}">` : '<div class="photo-upload-icon">📷</div><div class="photo-upload-hint">Upload Photo</div>'}
+          </div>
+          <input type="file" accept="image/*" style="display:none;" id="photo-input-${s.id}" onchange="handlePhotoUpload('${s.id}',this)">
+          <div style="text-align:center;margin-top:6px;font-size:11px;color:var(--ink-faint);">Click to change</div>
+        </div>
+        <div style="flex:1;min-width:200px;">
+          <div class="form-group" style="margin-bottom:12px;">
+            <div class="form-label">Full Name</div>
+            <input class="form-input" type="text" value="${s.name}" onchange="updateStudentField('${s.id}','name',this.value)">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="form-group">
+              <div class="form-label">Date of Birth ${age !== null ? '('+age+' yrs)' : ''}</div>
+              <input class="form-input" type="date" value="${s.dob||''}" onchange="updateStudentField('${s.id}','dob',this.value)">
+            </div>
+            <div class="form-group">
+              <div class="form-label">Date of Joining</div>
+              <input class="form-input" type="date" value="${s.joinDate||''}" onchange="updateStudentField('${s.id}','joinDate',this.value)">
+            </div>
+            <div class="form-group">
+              <div class="form-label">Group</div>
+              <select class="form-input" onchange="updateStudentField('${s.id}','group',this.value)">
+                <option value="primary" ${s.group==='primary'?'selected':''}>Primary & Toddlers</option>
+                <option value="elementary" ${s.group==='elementary'?'selected':''}>Elementary</option>
+                <option value="adolescent" ${s.group==='adolescent'?'selected':''}>Adolescents</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <div class="form-label">Main Campus</div>
+              <select class="form-input" onchange="updateStudentField('${s.id}','mainCampus',this.value)">
+                <option value="ND" ${s.mainCampus==='ND'?'selected':''}>Nong Don (ND)</option>
+                <option value="BKK" ${s.mainCampus==='BKK'?'selected':''}>Bangkok (BKK)</option>
+              </select>
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <div class="form-label">Notes</div>
+              <textarea class="form-input" onchange="updateStudentField('${s.id}','notes',this.value)">${s.notes||''}</textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function triggerPhotoUpload(id) { document.getElementById('photo-input-' + id).click(); }
+
+function handlePhotoUpload(id, input) {
+  const file = input.files[0];
+  if (!file) return;
+  // Resize to max 200x200 before storing (keep Sheets data lean)
+  const img = new Image();
+  const reader = new FileReader();
+  reader.onload = e => {
+    img.src = e.target.result;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX = 200;
+      let w = img.width, h = img.height;
+      if (w > h) { if (w > MAX) { h = h * MAX / w; w = MAX; } }
+      else { if (h > MAX) { w = w * MAX / h; h = MAX; } }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      updateStudentField(id, 'photo', dataUrl);
+    };
+  };
+  reader.readAsDataURL(file);
+}
+
+async function updateStudentField(id, field, value) {
+  const s = db.students.find(x => x.id === id);
+  if (!s) return;
+  s[field] = value;
+  try {
+    await api('updateStudent', { ...s });
+    showToast('Saved');
+    if (field === 'photo' || field === 'group') { renderStuInfoList(); renderStuDetail(); renderStudentList(); }
+  } catch (e) { showToast('Save failed: ' + e.message, true); }
+}
+
+async function deleteStudent(id) {
+  if (!confirm('Delete this student? All attendance records will also be removed.')) return;
+  try {
+    await api('deleteStudent', { id });
+    db.students = db.students.filter(s => s.id !== id);
+    Object.keys(db.attendance).forEach(k => { if (k.startsWith(id + '_')) delete db.attendance[k]; });
+    selectedStuId = null;
+    document.getElementById('stu-detail').innerHTML = '<div class="card empty-state"><div class="empty-icon">👈</div><h3>Select a Student</h3></div>';
+    renderStuInfoList();
+    renderStudentList();
+    showToast('Student deleted');
+  } catch (e) { showToast('Delete failed: ' + e.message, true); }
+}
+
+// ── ADD STUDENT MODAL ──
+function openAddStudentModal() {
+  document.getElementById('new-stu-name').value = '';
+  document.getElementById('new-stu-dob').value = '';
+  document.getElementById('new-stu-join').value = getTodayStr();
+  document.getElementById('new-stu-group').value = 'primary';
+  document.getElementById('new-stu-campus').value = 'ND';
+  document.getElementById('new-stu-notes').value = '';
+  openModal('modal-add-student');
+}
+
+async function addStudent() {
+  const name = document.getElementById('new-stu-name').value.trim();
+  if (!name) { alert('Please enter student name.'); return; }
+  const btn = document.getElementById('btn-add-student');
+  btn.disabled = true; btn.textContent = 'Adding…';
+  try {
+    const data = { name, dob: document.getElementById('new-stu-dob').value, joinDate: document.getElementById('new-stu-join').value, group: document.getElementById('new-stu-group').value, mainCampus: document.getElementById('new-stu-campus').value, notes: document.getElementById('new-stu-notes').value, photo: '' };
+    const newStudent = await api('addStudent', data);
+    db.students.push(newStudent);
+    closeModal('modal-add-student');
+    selectedStuId = newStudent.id;
+    renderStuInfoList();
+    renderStuDetail();
+    renderStudentList();
+    showToast('Student added: ' + name);
+  } catch (e) { showToast('Failed: ' + e.message, true); }
+  finally { btn.disabled = false; btn.textContent = 'Add Student'; }
+}
+
+// ════════════════════════════════════════
+// SEMESTER PAGE
+// ════════════════════════════════════════
+function renderSemesterList() {
+  const list = document.getElementById('semester-list');
+  if (!list) return;
+  list.innerHTML = '';
+  if (!db.semesters.length) { list.innerHTML = '<li style="padding:20px;text-align:center;color:var(--ink-faint);font-size:13px;">No semesters yet</li>'; return; }
+  db.semesters.forEach(sem => {
+    const li = document.createElement('li');
+    li.className = 'semester-item' + (sem.id === selectedSemId ? ' active-sem' : '');
+    li.onclick = () => { selectedSemId = sem.id; renderSemesterList(); renderSemesterDetail(); };
+    li.innerHTML = `
+      <div class="semester-dot ${sem.id === db.activeSemesterId ? 'current' : ''}"></div>
+      <div style="flex:1;">
+        <div style="font-weight:500;font-size:13px;">${sem.name}</div>
+        <div style="font-size:11px;color:var(--ink-faint);">${formatDate(sem.startDate)} — ${formatDate(sem.endDate)}</div>
+      </div>
+      ${sem.id === db.activeSemesterId ? '<span style="font-size:10px;background:var(--sage-pale);color:var(--forest);padding:2px 8px;border-radius:10px;font-weight:600;">ACTIVE</span>' : ''}`;
+    list.appendChild(li);
+  });
+}
+
+function renderSemesterDetail() {
+  const sem = db.semesters.find(s => s.id === selectedSemId);
+  if (!sem) return;
+  if (!sem.holidays) sem.holidays = [];
+  const det = document.getElementById('semester-detail');
+  det.innerHTML = `
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-header">
+        <div class="card-title">${sem.name}</div>
+        <div style="display:flex;gap:8px;">
+          ${sem.id !== db.activeSemesterId ? `<button class="btn btn-sage btn-sm" onclick="setActiveSemester('${sem.id}')">Set as Active</button>` : '<span style="font-size:12px;color:var(--sage);font-weight:600;">✓ Active Semester</span>'}
+          <button class="btn btn-danger btn-sm" onclick="deleteSemester('${sem.id}')">Delete</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;padding:20px 24px;">
+        <div class="form-group"><div class="form-label">Semester Name</div><input class="form-input" type="text" value="${sem.name}" onchange="updateSemesterField('${sem.id}','name',this.value)"></div>
+        <div class="form-group"><div class="form-label">Start Date</div><input class="form-input" type="date" value="${sem.startDate||''}" onchange="updateSemesterField('${sem.id}','startDate',this.value)"></div>
+        <div class="form-group"><div class="form-label">End Date</div><input class="form-input" type="date" value="${sem.endDate||''}" onchange="updateSemesterField('${sem.id}','endDate',this.value)"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Holidays & Closures</div><span style="font-size:12px;color:var(--ink-faint);">${sem.holidays.length} day(s)</span></div>
+      <div class="holiday-add-row">
+        <input type="date" id="new-holiday-date" value="${getTodayStr()}">
+        <input type="text" id="new-holiday-name" placeholder="Holiday name / reason" style="flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:13px;">
+        <button class="btn btn-sage btn-sm" onclick="addHoliday('${sem.id}')">+ Add</button>
+      </div>
+      <ul style="list-style:none;">
+        ${!sem.holidays.length ? '<li style="padding:16px;text-align:center;color:var(--ink-faint);font-size:13px;">No holidays added</li>' :
+          [...sem.holidays].sort((a,b)=>a.date.localeCompare(b.date)).map(h => `
+          <li class="holiday-item">
+            <div class="holiday-item-date">${formatDate(h.date)}</div>
+            <div style="flex:1;font-size:13px;">${h.name||'Holiday'}</div>
+            <button class="holiday-remove" onclick="removeHoliday('${sem.id}','${h.id}')">×</button>
+          </li>`).join('')}
+      </ul>
+    </div>`;
+}
+
+async function updateSemesterField(id, field, val) {
+  const sem = db.semesters.find(s => s.id === id);
+  if (!sem) return;
+  sem[field] = val;
+  try { await api('updateSemester', { id, name: sem.name, startDate: sem.startDate, endDate: sem.endDate }); showToast('Saved'); renderSemesterList(); updateSidebarSemester(); }
+  catch (e) { showToast('Failed: ' + e.message, true); }
+}
+
+async function setActiveSemester(id) {
+  try {
+    await api('setActiveSemester', { id });
+    db.activeSemesterId = id;
+    renderSemesterList(); renderSemesterDetail(); updateSidebarSemester();
+    showToast('Active semester updated');
+  } catch (e) { showToast('Failed: ' + e.message, true); }
+}
+
+async function deleteSemester(id) {
+  if (!confirm('Delete this semester and all its holidays?')) return;
+  try {
+    await api('deleteSemester', { id });
+    db.semesters = db.semesters.filter(s => s.id !== id);
+    if (db.activeSemesterId === id) db.activeSemesterId = null;
+    selectedSemId = null;
+    document.getElementById('semester-detail').innerHTML = '<div class="card empty-state"><div class="empty-icon">📅</div><h3>Select a Semester</h3></div>';
+    renderSemesterList(); updateSidebarSemester();
+    showToast('Semester deleted');
+  } catch (e) { showToast('Failed: ' + e.message, true); }
+}
+
+function openAddSemesterModal() {
+  document.getElementById('new-sem-name').value = '';
+  document.getElementById('new-sem-start').value = '';
+  document.getElementById('new-sem-end').value = '';
+  openModal('modal-add-semester');
+}
+
+async function addSemester() {
+  const name = document.getElementById('new-sem-name').value.trim();
+  const startDate = document.getElementById('new-sem-start').value;
+  const endDate = document.getElementById('new-sem-end').value;
+  if (!name || !startDate || !endDate) { alert('Please fill in all fields.'); return; }
+  try {
+    const newSem = await api('addSemester', { name, startDate, endDate });
+    newSem.holidays = [];
+    db.semesters.push(newSem);
+    if (!db.activeSemesterId) db.activeSemesterId = newSem.id;
+    closeModal('modal-add-semester');
+    selectedSemId = newSem.id;
+    renderSemesterList(); renderSemesterDetail(); updateSidebarSemester();
+    showToast('Semester created: ' + name);
+  } catch (e) { showToast('Failed: ' + e.message, true); }
+}
+
+async function addHoliday(semId) {
+  const date = document.getElementById('new-holiday-date').value;
+  const name = document.getElementById('new-holiday-name').value.trim() || 'Holiday';
+  if (!date) { alert('Please select a date.'); return; }
+  try {
+    const newH = await api('addHoliday', { semesterId: semId, date, name });
+    const sem = db.semesters.find(s => s.id === semId);
+    if (!sem.holidays) sem.holidays = [];
+    sem.holidays.push(newH);
+    renderSemesterDetail();
+    showToast('Holiday added');
+  } catch (e) { showToast('Failed: ' + e.message, true); }
+}
+
+async function removeHoliday(semId, hId) {
+  try {
+    await api('deleteHoliday', { id: hId });
+    const sem = db.semesters.find(s => s.id === semId);
+    sem.holidays = sem.holidays.filter(h => h.id !== hId);
+    renderSemesterDetail();
+    showToast('Holiday removed');
+  } catch (e) { showToast('Failed: ' + e.message, true); }
+}
+
+// ════════════════════════════════════════
+// REPORTS
+// ════════════════════════════════════════
+function populateReportFilters() {
+  const semSel = document.getElementById('rpt-semester');
+  const stuSel = document.getElementById('rpt-student');
+  semSel.innerHTML = '<option value="">All Semesters</option>';
+  db.semesters.forEach(s => {
+    const o = document.createElement('option');
+    o.value = s.id; o.textContent = s.name;
+    if (s.id === db.activeSemesterId) o.selected = true;
+    semSel.appendChild(o);
+  });
+  stuSel.innerHTML = '<option value="">All Students</option>';
+  [...db.students].sort((a,b) => a.name.localeCompare(b.name)).forEach(s => {
+    const o = document.createElement('option'); o.value = s.id; o.textContent = s.name; stuSel.appendChild(o);
+  });
+}
+
+function getSchoolDays(sem) {
+  if (!sem) return null;
+  const start = new Date(sem.startDate + 'T00:00:00');
+  const end = new Date(sem.endDate + 'T00:00:00');
+  const holidays = new Set((sem.holidays || []).map(h => h.date));
+  let days = 0;
+  const cur = new Date(start);
+  while (cur <= end) {
+    const dow = cur.getDay();
+    const dStr = cur.toISOString().split('T')[0];
+    if (dow !== 0 && dow !== 6 && !holidays.has(dStr)) days++;
+    cur.setDate(cur.getDate() + 1);
+  }
+  return days;
+}
+
+function generateReport() {
+  const semId = document.getElementById('rpt-semester').value;
+  const campus = document.getElementById('rpt-campus').value;
+  const group = document.getElementById('rpt-group').value;
+  const stuId = document.getElementById('rpt-student').value;
+  const sem = semId ? db.semesters.find(s => s.id === semId) : null;
+  const schoolDays = sem ? getSchoolDays(sem) : null;
+  const holidays = new Set(sem ? (sem.holidays||[]).map(h=>h.date) : []);
+
+  let students = db.students;
+  if (group) students = students.filter(s => s.group === group);
+  if (stuId) students = students.filter(s => s.id === stuId);
+
+  const rows = students.map(s => {
+    const prefix = s.id + '_';
+    let keys = Object.keys(db.attendance).filter(k => k.startsWith(prefix));
+    if (sem) keys = keys.filter(k => { const d = k.replace(prefix,''); return d >= sem.startDate && d <= sem.endDate && !holidays.has(d); });
+    const recs = keys.map(k => ({ date: k.replace(prefix,''), ...db.attendance[k] })).filter(r => !campus || r.campus === campus);
+    let present=0, half=0, late=0, afterSchool=0, loa=0;
+    recs.forEach(r => {
+      if (r.loa) { loa++; return; }
+      if (!r.checkIn) return;
+      present++;
+      if (r.checkOut && r.checkOut <= '12:00') half++;
+      if (r.checkIn > '09:00') late++;
+      if (r.afterSchool) afterSchool++;
+    });
+    const total = schoolDays || (present + loa);
+    const absent = schoolDays ? Math.max(0, schoolDays - present - loa) : 0;
+    const attPct = total > 0 ? Math.round((present/total)*100) : 0;
+    const latePct = present > 0 ? Math.round((late/present)*100) : 0;
+    const loaPct = total > 0 ? Math.round((loa/total)*100) : 0;
+    return { s, present, half, late, latePct, afterSchool, loa, loaPct, absent, attPct, total };
+  });
+
+  const statsEl = document.getElementById('report-stats');
+  const avgAtt = rows.length ? Math.round(rows.reduce((a,r)=>a+r.attPct,0)/rows.length) : 0;
+  statsEl.innerHTML = `
+    <div class="stat-card"><div class="stat-number">${rows.length}</div><div class="stat-label">Students</div></div>
+    <div class="stat-card"><div class="stat-number">${schoolDays ?? '—'}</div><div class="stat-label">School Days</div></div>
+    <div class="stat-card"><div class="stat-number">${avgAtt}%</div><div class="stat-label">Avg Attendance</div></div>
+    <div class="stat-card"><div class="stat-number">${rows.reduce((a,r)=>a+r.late,0)}</div><div class="stat-label">Late Arrivals</div></div>
+    <div class="stat-card"><div class="stat-number">${rows.reduce((a,r)=>a+r.loa,0)}</div><div class="stat-label">Leave of Absence</div></div>`;
+
+  const tbody = document.getElementById('report-tbody');
+  tbody.innerHTML = rows.length ? rows.map(r => `
+    <tr>
+      <td style="font-weight:500;">${r.s.name}</td>
+      <td><span class="group-label ${r.s.group}">${{primary:'P&T',elementary:'Elem',adolescent:'Adol'}[r.s.group]}</span></td>
+      <td><span class="campus-tag ${(r.s.mainCampus||'').toLowerCase()}">${r.s.mainCampus||'—'}</span></td>
+      <td>${r.present} / ${r.total}</td>
+      <td>${r.half}</td>
+      <td><div class="pct-bar"><span>${r.late} (${r.latePct}%)</span><div class="pct-track"><div class="pct-fill warn" style="width:${r.latePct}%"></div></div></div></td>
+      <td>${r.afterSchool}</td>
+      <td>${r.loa} (${r.loaPct}%)</td>
+      <td style="color:${r.absent>0?'var(--absent-color)':'inherit'};">${r.absent}</td>
+      <td><div class="pct-bar"><span style="font-weight:600;color:${r.attPct>=80?'var(--forest)':r.attPct>=60?'var(--warm)':'var(--absent-color)'};">${r.attPct}%</span><div class="pct-track"><div class="pct-fill ${r.attPct>=80?'':r.attPct>=60?'warn':'danger'}" style="width:${r.attPct}%"></div></div></div></td>
+    </tr>`).join('') : '<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--ink-faint);">No data for selected filters</td></tr>';
+}
+
+function exportCSV() {
+  const rows = document.querySelectorAll('#report-tbody tr');
+  const headers = ['Student','Group','Campus','Days Present/Total','Half Days','Late Count','Late %','After School','LOA Count','LOA %','Absent','Attendance %'];
+  const csvRows = [headers.join(',')];
+  rows.forEach(row => {
+    const cells = [...row.querySelectorAll('td')].map(td => '"' + td.textContent.replace(/"/g,'""').replace(/\s+/g,' ').trim() + '"');
+    if (cells.length > 1) csvRows.push(cells.join(','));
+  });
+  const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `JWM_Report_${getTodayStr()}.csv`;
+  a.click();
+  showToast('CSV exported');
+}
+
+// ════════════════════════════════════════
+// MODALS
+// ════════════════════════════════════════
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(o => { o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); }); });
+
+// ════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════
+init();
+</script>
+</body>
+</html>
